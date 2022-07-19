@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'musique.dart';
-
+// ignore: import_of_legacy_library_into_null_safe
+import 'package:audioplayer/audioplayer.dart';
 void main() {
   runApp(MyApp());
 }
@@ -34,15 +36,25 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   
   List<Musique> maListeDeMusique = [
-    Musique('Theme Swift', 'Drizy', 'assets/drake2.jpg',
+      Musique('Dictature 1', 'Omzo Dollar', 'assets/omzo3.jpg',
+        'https://www.boomplay.com/songs/45283253?from=search'),
+    Musique('Girls want girls', 'Drake ft Lil Baby', 'assets/drake2.jpg',
         'https://www.boomplay.com/songs/3406894?from=search'),
-    Musique('Theme Flutter', 'Omzo Dollar', 'assets/omzo3.jpg',
-        'https://www.boomplay.com/songs/45283253?from=search')
+  
   ];
 late Musique maMusiqueActuelle;
+Duration position = Duration(seconds: 0);
+Duration duree = Duration(seconds: 10);
+late AudioPlayer audioPlayer;
+late StreamSubscription positionSub;
+late StreamSubscription stateSubscription;
+PlayerState statut = PlayerState.stopped;
+
+
   void initState() {
     super.initState();
     maMusiqueActuelle = maListeDeMusique[0];
+    configurationAudioPlayer();
     log(maMusiqueActuelle.titre);
   }
 
@@ -81,7 +93,20 @@ late Musique maMusiqueActuelle;
                 textAvecStyle('0:0', 0.8),
                 textAvecStyle('3:45', 0.8),
               ],
-            )
+            ),
+            new Slider(
+              value: position.inSeconds.toDouble(),
+              min: 0.0,
+              max : 30.0, 
+              inactiveColor: Colors.white,
+              activeColor: Colors.red,
+              onChanged:(double d){
+                setState(() {
+                  Duration newDuration =  Duration(seconds: d.toInt());
+                  position= newDuration;
+                });
+              }
+              )
           ],
         ),
       ),
@@ -121,6 +146,30 @@ IconButton buton(IconData icone, double taille, actionMusic action){
           color: Colors.white, fontSize: 20.0, fontStyle: FontStyle.italic),
     );
   }
+  void configurationAudioPlayer(){
+    audioPlayer= AudioPlayer();
+    positionSub = audioPlayer.onAudioPositionChanged.listen(
+      (pos) => setState(() => position = pos));
+      stateSubscription = audioPlayer.onPlayerStateChanged.listen((state) { 
+        if (state == AudioPlayerState.PLAYING) {
+          setState(() {
+            duree  = audioPlayer.duration;
+          });
+        } else if(state == AudioPlayerState.STOPPED){
+          setState(() {
+            statut = PlayerState.stopped;
+          });
+        }
+      },onError: (message) {
+        print('erreur : $message');
+        setState(() {
+          statut = PlayerState.stopped;
+          duree = Duration (seconds: 0);
+          position = Duration (seconds: 0);
+        });
+      }
+      );
+  }
  
 }
  enum actionMusic{
@@ -128,4 +177,10 @@ IconButton buton(IconData icone, double taille, actionMusic action){
   pause,
   rewind,
   forward
+  }
+  
+  enum PlayerState{
+    playing,
+    stopped,
+    paused
   }
